@@ -1,0 +1,1105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-PYDDZEDGY9"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-PYDDZEDGY9');
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PixCraft Studio — Images to PDF</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.js"></script>
+<style>
+:root{
+  --bg:#15171c;
+  --bg-soft:#1b1e25;
+  --panel:#20232b;
+  --panel-2:#262a33;
+  --line:#33384400;
+  --line-c:rgba(255,255,255,0.07);
+  --ink:#f2f0ea;
+  --ink-dim:#9a9fae;
+  --ink-faint:#5d6273;
+  --amber:#e8a33d;
+  --amber-soft:#e8a33d22;
+  --teal:#2d8c8c;
+  --danger:#d9684f;
+  --radius:14px;
+  --radius-sm:8px;
+  --font-display:'Space Grotesk', sans-serif;
+  --font-body:'Inter', sans-serif;
+  --font-mono:'JetBrains Mono', monospace;
+  --shadow-lg:0 20px 60px -20px rgba(0,0,0,0.6);
+}
+[data-theme="light"]{
+  --bg:#f4f1ea;
+  --bg-soft:#ece8df;
+  --panel:#ffffff;
+  --panel-2:#f6f3ec;
+  --line-c:rgba(20,18,12,0.08);
+  --ink:#1c1a14;
+  --ink-dim:#6b6557;
+  --ink-faint:#a39c89;
+  --amber-soft:#e8a33d1c;
+  --shadow-lg:0 20px 60px -25px rgba(60,50,20,0.25);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+@media (prefers-reduced-motion: reduce){
+  *{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}
+}
+body{
+  background:var(--bg);
+  color:var(--ink);
+  font-family:var(--font-body);
+  min-height:100vh;
+  overflow-x:hidden;
+  transition:background .35s ease, color .35s ease;
+}
+::selection{background:var(--amber); color:#1c1306;}
+
+/* ---------- topbar ---------- */
+.topbar{
+  position:sticky; top:0; z-index:50;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:16px 28px;
+  background:color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--line-c);
+}
+.brand{display:flex; align-items:center; gap:12px;}
+.brand-mark{
+  width:36px; height:36px; border-radius:10px;
+  background:linear-gradient(145deg, var(--amber), #c97f1f);
+  display:flex; align-items:center; justify-content:center;
+  font-family:var(--font-display); font-weight:700; color:#1c1306;
+  font-size:17px; box-shadow:0 6px 16px -4px var(--amber-soft);
+  transform:rotate(-6deg);
+  transition:transform .4s cubic-bezier(.34,1.56,.64,1);
+}
+.brand:hover .brand-mark{ transform:rotate(0deg) scale(1.06); }
+.brand-text{display:flex; flex-direction:column; line-height:1.1;}
+.brand-text b{font-family:var(--font-display); font-size:18px; font-weight:700; letter-spacing:-0.02em;}
+.brand-text span{font-size:10.5px; color:var(--ink-faint); letter-spacing:.14em; text-transform:uppercase; font-family:var(--font-mono);}
+.top-actions{display:flex; align-items:center; gap:10px;}
+.icon-btn{
+  width:38px; height:38px; border-radius:10px;
+  display:flex; align-items:center; justify-content:center;
+  background:var(--panel); border:1px solid var(--line-c);
+  cursor:pointer; color:var(--ink-dim);
+  transition:all .2s ease;
+}
+.icon-btn:hover{ color:var(--ink); border-color:var(--amber); transform:translateY(-1px); }
+.icon-btn svg{width:18px; height:18px;}
+
+/* ---------- layout ---------- */
+.app{ display:grid; grid-template-columns: 280px 1fr 320px; gap:0; min-height:calc(100vh - 69px); }
+@media (max-width:1100px){ .app{ grid-template-columns:1fr; } }
+
+.panel{ padding:22px; border-right:1px solid var(--line-c); }
+.panel.right{ border-right:none; border-left:1px solid var(--line-c); }
+@media (max-width:1100px){ .panel{ border:none; border-bottom:1px solid var(--line-c); } }
+
+.section-label{
+  font-family:var(--font-mono); font-size:10.5px; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--ink-faint); margin-bottom:14px;
+  display:flex; align-items:center; gap:8px;
+}
+.section-label::after{ content:''; flex:1; height:1px; background:var(--line-c); }
+
+/* ---------- dropzone ---------- */
+.dropzone{
+  border:1.5px dashed var(--line-c);
+  border-radius:var(--radius);
+  padding:26px 16px;
+  text-align:center;
+  cursor:pointer;
+  transition:all .25s ease;
+  background:var(--panel);
+  margin-bottom:18px;
+}
+.dropzone:hover, .dropzone.drag{
+  border-color:var(--amber);
+  background:var(--amber-soft);
+}
+.dropzone svg{width:30px; height:30px; color:var(--ink-faint); margin-bottom:10px; transition:transform .3s ease;}
+.dropzone:hover svg{ transform:translateY(-3px); color:var(--amber); }
+.dropzone p{font-size:13px; color:var(--ink-dim); font-weight:500;}
+.dropzone small{display:block; margin-top:4px; font-size:11px; color:var(--ink-faint);}
+#fileInput{display:none;}
+
+/* thumbnail list */
+.thumb-list{ display:flex; flex-direction:column; gap:10px; max-height:42vh; overflow-y:auto; padding-right:4px; }
+.thumb-list::-webkit-scrollbar{width:5px;}
+.thumb-list::-webkit-scrollbar-thumb{background:var(--line-c); border-radius:10px;}
+.thumb-item{
+  display:flex; align-items:center; gap:10px;
+  background:var(--panel); border:1px solid var(--line-c);
+  border-radius:var(--radius-sm); padding:8px;
+  cursor:grab; transition:all .2s ease; position:relative;
+  animation:popIn .35s ease backwards;
+}
+@keyframes popIn{ from{opacity:0; transform:scale(.9) translateY(6px);} to{opacity:1; transform:scale(1) translateY(0);} }
+.thumb-item.active{ border-color:var(--amber); background:var(--amber-soft); }
+.thumb-item:hover{ border-color:var(--ink-faint); }
+.thumb-item.sortable-ghost{ opacity:0.35; }
+.thumb-img{width:46px; height:46px; border-radius:6px; object-fit:cover; flex-shrink:0; background:var(--bg-soft);}
+.thumb-meta{flex:1; min-width:0;}
+.thumb-meta b{font-size:12px; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.thumb-meta span{font-size:10.5px; color:var(--ink-faint); font-family:var(--font-mono);}
+.thumb-del{
+  width:24px; height:24px; border-radius:6px; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+  color:var(--ink-faint); cursor:pointer; transition:all .2s ease;
+  background:transparent; border:none;
+}
+.thumb-del:hover{ color:var(--danger); background:rgba(217,104,79,0.12); }
+.thumb-del svg{width:14px; height:14px;}
+.empty-hint{ font-size:12px; color:var(--ink-faint); text-align:center; padding:18px 4px; }
+
+/* ---------- center stage ---------- */
+.stage{
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  padding:32px; gap:18px; position:relative;
+}
+.stage-canvas-wrap{
+  background:
+    linear-gradient(45deg, var(--bg-soft) 25%, transparent 25%) -8px 0/16px 16px,
+    linear-gradient(-45deg, var(--bg-soft) 25%, transparent 25%) -8px 0/16px 16px,
+    linear-gradient(45deg, transparent 75%, var(--bg-soft) 75%) -8px 0/16px 16px,
+    linear-gradient(-45deg, transparent 75%, var(--bg-soft) 75%) -8px 0/16px 16px;
+  background-color: var(--bg);
+  border-radius:var(--radius);
+  border:1px solid var(--line-c);
+  box-shadow:var(--shadow-lg);
+  display:flex; align-items:center; justify-content:center;
+  padding:18px; max-width:100%; max-height:58vh;
+  overflow:auto;
+  transition:box-shadow .3s ease;
+}
+#editCanvas{ max-width:100%; max-height:50vh; border-radius:6px; display:block; }
+.stage-empty{
+  display:flex; flex-direction:column; align-items:center; gap:10px;
+  color:var(--ink-faint); padding:60px 40px; text-align:center;
+}
+.stage-empty svg{width:56px; height:56px; opacity:.5;}
+.stage-empty b{font-family:var(--font-display); font-size:18px; color:var(--ink-dim); font-weight:600;}
+
+.stage-toolbar{ display:flex; gap:8px; flex-wrap:wrap; justify-content:center; }
+.tbtn{
+  display:flex; align-items:center; gap:7px;
+  padding:9px 14px; border-radius:10px;
+  background:var(--panel); border:1px solid var(--line-c);
+  color:var(--ink); font-size:12.5px; font-weight:600; cursor:pointer;
+  transition:all .2s ease; font-family:var(--font-body);
+}
+.tbtn svg{width:15px; height:15px;}
+.tbtn:hover{ border-color:var(--amber); color:var(--amber); transform:translateY(-1px); }
+.tbtn:active{ transform:translateY(0); }
+.tbtn.primary{ background:var(--amber); border-color:var(--amber); color:#1c1306; }
+.tbtn.primary:hover{ color:#1c1306; filter:brightness(1.08); box-shadow:0 8px 20px -6px var(--amber-soft);}
+.tbtn.danger:hover{ border-color:var(--danger); color:var(--danger); }
+
+/* ---------- right panel: editing controls ---------- */
+.tabs{ display:flex; gap:4px; background:var(--panel); border-radius:10px; padding:4px; margin-bottom:18px; }
+.tab{
+  flex:1; text-align:center; padding:8px 6px; border-radius:7px;
+  font-size:11.5px; font-weight:600; cursor:pointer; color:var(--ink-faint);
+  transition:all .2s ease;
+}
+.tab.active{ background:var(--bg); color:var(--ink); box-shadow:0 1px 4px rgba(0,0,0,0.2); }
+
+.ctrl-group{ margin-bottom:18px; }
+.ctrl-row{ display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+.ctrl-row label{ font-size:12px; font-weight:600; color:var(--ink-dim); }
+.ctrl-row .val{ font-family:var(--font-mono); font-size:11px; color:var(--amber); }
+input[type="range"]{
+  width:100%; -webkit-appearance:none; height:4px; border-radius:4px;
+  background:var(--line-c); outline:none; margin-bottom:14px;
+}
+input[type="range"]::-webkit-slider-thumb{
+  -webkit-appearance:none; width:15px; height:15px; border-radius:50%;
+  background:var(--amber); cursor:pointer; border:3px solid var(--bg);
+  box-shadow:0 0 0 1px var(--amber); transition:transform .15s ease;
+}
+input[type="range"]::-webkit-slider-thumb:hover{ transform:scale(1.2); }
+
+.filter-grid{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.filter-chip{
+  padding:9px 6px; border-radius:9px; text-align:center; cursor:pointer;
+  background:var(--panel); border:1px solid var(--line-c); font-size:11.5px; font-weight:600;
+  transition:all .2s ease;
+}
+.filter-chip:hover{ border-color:var(--amber); }
+.filter-chip.active{ background:var(--amber-soft); border-color:var(--amber); color:var(--amber); }
+
+.text-input{
+  width:100%; padding:10px 12px; border-radius:9px; margin-bottom:10px;
+  background:var(--panel); border:1px solid var(--line-c); color:var(--ink);
+  font-family:var(--font-body); font-size:13px; outline:none;
+}
+.text-input:focus{ border-color:var(--amber); }
+.row-2{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.swatches{ display:flex; gap:7px; flex-wrap:wrap; margin-bottom:10px; }
+.swatch{ width:24px; height:24px; border-radius:50%; cursor:pointer; border:2px solid var(--line-c); transition:transform .15s ease;}
+.swatch:hover{ transform:scale(1.15); }
+.swatch.active{ border-color:var(--ink); box-shadow:0 0 0 2px var(--bg), 0 0 0 3px var(--amber); }
+select.text-input{ appearance:none; cursor:pointer; }
+
+/* PDF settings tab */
+.opt-grid{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:14px; }
+.opt-card{
+  padding:10px 8px; border-radius:9px; text-align:center; cursor:pointer;
+  background:var(--panel); border:1px solid var(--line-c); font-size:12px; font-weight:600;
+  transition:all .2s ease;
+}
+.opt-card.active{ background:var(--amber-soft); border-color:var(--amber); color:var(--amber); }
+.opt-card:hover{ border-color:var(--amber); }
+
+.convert-btn{
+  width:100%; padding:15px; border-radius:12px; border:none; cursor:pointer;
+  background:linear-gradient(135deg, var(--amber), #c97f1f); color:#1c1306;
+  font-family:var(--font-display); font-weight:700; font-size:14.5px; letter-spacing:.01em;
+  display:flex; align-items:center; justify-content:center; gap:9px;
+  box-shadow:0 10px 30px -10px var(--amber-soft);
+  transition:all .25s cubic-bezier(.34,1.56,.64,1);
+  position:relative; overflow:hidden; margin-top:8px;
+}
+.convert-btn:hover{ transform:translateY(-2px); box-shadow:0 14px 36px -10px var(--amber-soft); filter:brightness(1.05); }
+.convert-btn:active{ transform:translateY(0); }
+.convert-btn:disabled{ opacity:.45; cursor:not-allowed; transform:none; }
+.convert-btn svg{width:17px; height:17px;}
+
+.spinner{
+  width:16px; height:16px; border-radius:50%;
+  border:2px solid rgba(28,19,6,0.25); border-top-color:#1c1306;
+  animation:spin .7s linear infinite; display:none;
+}
+.convert-btn.loading .spinner{ display:inline-block; }
+.convert-btn.loading .btn-label{ display:none; }
+@keyframes spin{ to{ transform:rotate(360deg); } }
+
+/* toasts */
+.toast-wrap{ position:fixed; bottom:24px; right:24px; display:flex; flex-direction:column; gap:10px; z-index:200; }
+.toast{
+  display:flex; align-items:center; gap:10px;
+  background:var(--panel); border:1px solid var(--line-c);
+  padding:13px 16px; border-radius:11px; font-size:13px; font-weight:500;
+  box-shadow:var(--shadow-lg); min-width:240px;
+  animation:toastIn .35s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes toastIn{ from{ opacity:0; transform:translateX(40px) scale(.95);} to{opacity:1; transform:translateX(0) scale(1);} }
+.toast.out{ animation:toastOut .3s ease forwards; }
+@keyframes toastOut{ to{ opacity:0; transform:translateX(40px); } }
+.toast .dot{ width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.toast.success .dot{ background:#5fb878; }
+.toast.error .dot{ background:var(--danger); }
+.toast.info .dot{ background:var(--amber); }
+
+/* crop overlay */
+.crop-box{
+  position:absolute; border:2px dashed var(--amber); cursor:move;
+  box-shadow:0 0 0 2000px rgba(0,0,0,0.45);
+}
+.crop-handle{
+  position:absolute; width:11px; height:11px; background:var(--amber);
+  border-radius:50%; border:2px solid var(--bg);
+}
+.crop-handle.nw{ top:-6px; left:-6px; cursor:nwse-resize; }
+.crop-handle.ne{ top:-6px; right:-6px; cursor:nesw-resize; }
+.crop-handle.sw{ bottom:-6px; left:-6px; cursor:nesw-resize; }
+.crop-handle.se{ bottom:-6px; right:-6px; cursor:nwse-resize; }
+.canvas-stage-relative{ position:relative; display:inline-block; }
+
+.footer-credit{ text-align:center; font-size:10.5px; color:var(--ink-faint); padding:18px; font-family:var(--font-mono); }
+
+/* ---------- QR scanner ---------- */
+.qr-viewport{
+  position:relative; width:100%; aspect-ratio:4/3; border-radius:var(--radius);
+  background:var(--panel); border:1px solid var(--line-c); overflow:hidden;
+  display:flex; align-items:center; justify-content:center;
+}
+.qr-viewport video{ width:100%; height:100%; object-fit:cover; display:none; }
+.qr-viewport.live video{ display:block; }
+.qr-viewport.live .qr-empty{ display:none; }
+.qr-empty{ display:flex; flex-direction:column; align-items:center; gap:8px; color:var(--ink-faint); padding:20px; text-align:center; }
+.qr-empty svg{ width:40px; height:40px; opacity:.5; }
+.qr-empty span{ font-size:12px; }
+.qr-frame{
+  position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+  width:62%; aspect-ratio:1/1; border:2px solid var(--amber); border-radius:14px;
+  box-shadow:0 0 0 1000px rgba(0,0,0,0.35); display:none; pointer-events:none;
+}
+.qr-viewport.live .qr-frame{ display:block; animation:qrPulse 1.8s ease-in-out infinite; }
+@keyframes qrPulse{ 0%,100%{ box-shadow:0 0 0 1000px rgba(0,0,0,0.35), 0 0 0 0 var(--amber-soft);} 50%{ box-shadow:0 0 0 1000px rgba(0,0,0,0.35), 0 0 0 8px transparent;} }
+.qr-result{
+  background:var(--panel); border:1px solid var(--amber); border-radius:10px;
+  padding:12px 14px; font-size:12.5px; word-break:break-all; color:var(--ink);
+  font-family:var(--font-mono); animation:popIn .3s ease;
+}
+</style>
+</head>
+<body data-theme="dark">
+
+<div class="topbar">
+  <div class="brand">
+    <div class="brand-mark">P</div>
+    <div class="brand-text">
+      <b>PixCraft Studio</b>
+      <span>Image → PDF Atelier</span>
+    </div>
+  </div>
+  <div class="top-actions">
+    <div class="icon-btn" id="themeToggle" title="Toggle theme">
+      <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+    </div>
+  </div>
+</div>
+
+<div class="app">
+
+  <!-- LEFT: upload + thumbnails -->
+  <div class="panel left">
+    <div class="section-label">Import</div>
+    <div class="dropzone" id="dropzone">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 16V4m0 0L7 9m5-5 5 5M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>
+      <p>Drop images here</p>
+      <small>or click to browse · JPG, PNG, WEBP</small>
+    </div>
+    <input type="file" id="fileInput" accept="image/*" multiple>
+
+    <div class="section-label">Pages <span id="pageCount" style="font-family:var(--font-mono); color:var(--amber); margin-left:auto;">0</span></div>
+    <div class="thumb-list" id="thumbList">
+      <div class="empty-hint" id="emptyHint">No images yet — your stack will appear here, drag to reorder.</div>
+    </div>
+  </div>
+
+  <!-- CENTER: canvas stage -->
+  <div class="stage">
+    <div class="stage-canvas-wrap" id="canvasWrap">
+      <div class="stage-empty" id="stageEmpty">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/></svg>
+        <b>The canvas is waiting</b>
+        <span>Upload an image on the left to start editing</span>
+      </div>
+      <div class="canvas-stage-relative" id="canvasRelWrap" style="display:none;">
+        <canvas id="editCanvas"></canvas>
+      </div>
+    </div>
+    <div class="stage-toolbar" id="stageToolbar" style="display:none;">
+      <button class="tbtn" id="rotateLeft"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>Rotate L</button>
+      <button class="tbtn" id="rotateRight"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>Rotate R</button>
+      <button class="tbtn" id="flipH"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v18M16 7l3 3-3 3M8 7 5 10l3 3"/></svg>Flip H</button>
+      <button class="tbtn" id="flipV"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M7 8 10 5l3 3M7 16l3 3 3-3"/></svg>Flip V</button>
+      <button class="tbtn" id="cropBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2v14a2 2 0 0 0 2 2h14M18 22V8a2 2 0 0 0-2-2H2"/></svg>Crop</button>
+      <button class="tbtn danger" id="resetEdit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>Reset</button>
+    </div>
+  </div>
+
+  <!-- RIGHT: edit + pdf settings -->
+  <div class="panel right">
+    <div class="tabs">
+      <div class="tab active" data-tab="adjust">Adjust</div>
+      <div class="tab" data-tab="text">Text</div>
+      <div class="tab" data-tab="pdf">PDF</div>
+      <div class="tab" data-tab="scan">Scan</div>
+    </div>
+
+    <!-- ADJUST TAB -->
+    <div class="tab-panel" id="tab-adjust">
+      <div class="ctrl-group">
+        <div class="ctrl-row"><label>Brightness</label><span class="val" id="vBright">100%</span></div>
+        <input type="range" id="rBright" min="0" max="200" value="100">
+        <div class="ctrl-row"><label>Contrast</label><span class="val" id="vContrast">100%</span></div>
+        <input type="range" id="rContrast" min="0" max="200" value="100">
+        <div class="ctrl-row"><label>Saturation</label><span class="val" id="vSat">100%</span></div>
+        <input type="range" id="rSat" min="0" max="200" value="100">
+      </div>
+      <div class="section-label">Filters</div>
+      <div class="filter-grid" id="filterGrid">
+        <div class="filter-chip active" data-filter="none">None</div>
+        <div class="filter-chip" data-filter="grayscale">B &amp; White</div>
+        <div class="filter-chip" data-filter="sepia">Sepia</div>
+        <div class="filter-chip" data-filter="vintage">Vintage</div>
+        <div class="filter-chip" data-filter="cool">Cool</div>
+        <div class="filter-chip" data-filter="warm">Warm</div>
+      </div>
+      <div class="section-label" style="margin-top:18px;">Resize</div>
+      <div class="row-2">
+        <input class="text-input" type="number" id="resizeW" placeholder="Width px">
+        <input class="text-input" type="number" id="resizeH" placeholder="Height px">
+      </div>
+      <button class="tbtn" id="applyResize" style="width:100%; justify-content:center;">Apply Resize</button>
+    </div>
+
+    <!-- TEXT TAB -->
+    <div class="tab-panel" id="tab-text" style="display:none;">
+      <input class="text-input" type="text" id="textInput" placeholder="Type text to overlay…">
+      <div class="row-2">
+        <select class="text-input" id="fontFamily">
+          <option value="Space Grotesk">Space Grotesk</option>
+          <option value="Inter">Inter</option>
+          <option value="JetBrains Mono">Mono</option>
+          <option value="Georgia">Georgia</option>
+        </select>
+        <input class="text-input" type="number" id="fontSize" value="36" min="8" max="200">
+      </div>
+      <div class="section-label">Color</div>
+      <div class="swatches" id="colorSwatches">
+        <div class="swatch active" style="background:#f2f0ea" data-c="#f2f0ea"></div>
+        <div class="swatch" style="background:#e8a33d" data-c="#e8a33d"></div>
+        <div class="swatch" style="background:#2d8c8c" data-c="#2d8c8c"></div>
+        <div class="swatch" style="background:#d9684f" data-c="#d9684f"></div>
+        <div class="swatch" style="background:#1c1a14" data-c="#1c1a14"></div>
+      </div>
+      <button class="tbtn primary" id="addTextBtn" style="width:100%; justify-content:center;">Add Text to Image</button>
+      <p style="font-size:11px; color:var(--ink-faint); margin-top:10px; line-height:1.5;">Tip: text is stamped at center — add it, then crop/resize to reposition as needed.</p>
+    </div>
+
+    <!-- PDF TAB -->
+    <div class="tab-panel" id="tab-pdf" style="display:none;">
+      <div class="section-label">Page Size</div>
+      <div class="opt-grid" id="pageSizeGrid">
+        <div class="opt-card active" data-size="a4">A4</div>
+        <div class="opt-card" data-size="letter">Letter</div>
+        <div class="opt-card" data-size="legal">Legal</div>
+        <div class="opt-card" data-size="fit">Fit to Image</div>
+      </div>
+      <div class="section-label">Orientation</div>
+      <div class="opt-grid" id="orientGrid">
+        <div class="opt-card active" data-o="portrait">Portrait</div>
+        <div class="opt-card" data-o="landscape">Landscape</div>
+      </div>
+      <div class="ctrl-group">
+        <div class="ctrl-row"><label>Margin</label><span class="val" id="vMargin">10 mm</span></div>
+        <input type="range" id="rMargin" min="0" max="40" value="10">
+        <div class="ctrl-row"><label>Image Quality</label><span class="val" id="vQuality">92%</span></div>
+        <input type="range" id="rQuality" min="30" max="100" value="92">
+      </div>
+      <div class="section-label">Layout</div>
+      <div class="opt-grid" id="layoutGrid">
+        <div class="opt-card active" data-layout="one">One per page</div>
+        <div class="opt-card" data-layout="two">Two per page</div>
+      </div>
+
+      <button class="convert-btn" id="convertBtn" disabled>
+        <span class="spinner"></span>
+        <svg class="btn-label" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 15h6M9 18h6M9 12h2"/></svg>
+        <span class="btn-label">Convert to PDF</span>
+      </button>
+    </div>
+
+    <!-- SCAN TAB -->
+    <div class="tab-panel" id="tab-scan" style="display:none;">
+      <div class="section-label">QR Scanner</div>
+      <div class="qr-viewport" id="qrViewport">
+        <video id="qrVideo" playsinline muted></video>
+        <div class="qr-frame"></div>
+        <div class="qr-empty" id="qrEmpty">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM18 14h3v3M14 18h3v3M21 21v-3"/></svg>
+          <span>Camera preview will appear here</span>
+        </div>
+      </div>
+      <div class="row-2" style="margin-top:12px;">
+        <button class="tbtn" id="qrStartBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7 16 12l7 5V7Z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>Start Camera</button>
+        <button class="tbtn danger" id="qrStopBtn" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>Stop</button>
+      </div>
+      <div class="section-label" style="margin-top:18px;">Or upload a QR image</div>
+      <div class="dropzone" id="qrDropzone" style="margin-bottom:8px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 16V4m0 0L7 9m5-5 5 5M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>
+        <p>Drop a QR code image</p>
+        <small>or click to browse</small>
+      </div>
+      <input type="file" id="qrFileInput" accept="image/*" style="display:none;">
+
+      <div id="qrResultBox" style="display:none;">
+        <div class="section-label" style="margin-top:18px;">Result</div>
+        <div class="qr-result">
+          <span id="qrResultText"></span>
+        </div>
+        <div class="row-2" style="margin-top:10px;">
+          <button class="tbtn primary" id="qrOpenBtn" style="justify-content:center;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14 21 3"/></svg>Open Link</button>
+          <button class="tbtn" id="qrCopyBtn" style="justify-content:center;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copy</button>
+        </div>
+      </div>
+      <p style="font-size:11px; color:var(--ink-faint); margin-top:12px; line-height:1.5;">Scans any QR — links, Wi-Fi, contact cards, UPI/payment codes, plain text — and opens it on whichever platform it points to.</p>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer-credit">PixCraft Studio · all processing happens locally in your browser, nothing is uploaded</div>
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script>
+(function(){
+  // ---------- state ----------
+  let images = []; // {id, name, originalSrc, editedSrc, rotation, flipH, flipV, brightness, contrast, saturation, filter, width, height}
+  let activeId = null;
+  let cropMode = false;
+  let cropRect = null;
+
+  const $ = (s)=>document.querySelector(s);
+  const $$ = (s)=>document.querySelectorAll(s);
+
+  const fileInput = $('#fileInput');
+  const dropzone = $('#dropzone');
+  const thumbList = $('#thumbList');
+  const emptyHint = $('#emptyHint');
+  const pageCount = $('#pageCount');
+  const canvas = $('#editCanvas');
+  const ctx = canvas.getContext('2d');
+  const stageEmpty = $('#stageEmpty');
+  const canvasRelWrap = $('#canvasRelWrap');
+  const stageToolbar = $('#stageToolbar');
+  const convertBtn = $('#convertBtn');
+
+  // ---------- theme ----------
+  $('#themeToggle').addEventListener('click', ()=>{
+    const body = document.body;
+    const isDark = body.getAttribute('data-theme') === 'dark';
+    body.setAttribute('data-theme', isDark ? 'light':'dark');
+    $('#themeIcon').innerHTML = isDark
+      ? '<circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/>'
+      : '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>';
+  });
+
+  // ---------- toast ----------
+  function toast(msg, type='info'){
+    const wrap = $('#toastWrap');
+    const el = document.createElement('div');
+    el.className = `toast ${type}`;
+    el.innerHTML = `<span class="dot"></span><span>${msg}</span>`;
+    wrap.appendChild(el);
+    setTimeout(()=>{ el.classList.add('out'); setTimeout(()=>el.remove(), 320); }, 2600);
+  }
+
+  // ---------- upload ----------
+  dropzone.addEventListener('click', ()=>fileInput.click());
+  dropzone.addEventListener('dragover', e=>{ e.preventDefault(); dropzone.classList.add('drag'); });
+  dropzone.addEventListener('dragleave', ()=> dropzone.classList.remove('drag'));
+  dropzone.addEventListener('drop', e=>{
+    e.preventDefault(); dropzone.classList.remove('drag');
+    handleFiles(e.dataTransfer.files);
+  });
+  fileInput.addEventListener('change', e=> handleFiles(e.target.files));
+
+  function handleFiles(files){
+    const list = Array.from(files).filter(f=>f.type.startsWith('image/'));
+    if(!list.length){ toast('Please select valid image files', 'error'); return; }
+    list.forEach(file=>{
+      const reader = new FileReader();
+      reader.onload = (ev)=>{
+        const img = new Image();
+        img.onload = ()=>{
+          const id = 'img_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
+          images.push({
+            id, name:file.name, originalSrc:ev.target.result, editedSrc:ev.target.result,
+            rotation:0, flipH:false, flipV:false,
+            brightness:100, contrast:100, saturation:100, filter:'none',
+            width:img.width, height:img.height, texts:[]
+          });
+          renderThumbs();
+          if(!activeId){ selectImage(id); }
+          toast(`${file.name} added`, 'success');
+        };
+        img.src = ev.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+    fileInput.value = '';
+  }
+
+  // ---------- thumbnails ----------
+  function renderThumbs(){
+    pageCount.textContent = images.length;
+    convertBtn.disabled = images.length === 0;
+    if(images.length === 0){
+      thumbList.innerHTML = '';
+      thumbList.appendChild(emptyHint);
+      return;
+    }
+    thumbList.innerHTML = '';
+    images.forEach((im, idx)=>{
+      const item = document.createElement('div');
+      item.className = 'thumb-item' + (im.id===activeId ? ' active':'');
+      item.dataset.id = im.id;
+      item.style.animationDelay = (idx*0.03)+'s';
+      item.innerHTML = `
+        <img class="thumb-img" src="${im.editedSrc}">
+        <div class="thumb-meta"><b>${im.name}</b><span>#${idx+1} · ${im.width}×${im.height}</span></div>
+        <button class="thumb-del" title="Remove"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/></svg></button>
+      `;
+      item.addEventListener('click', (e)=>{
+        if(e.target.closest('.thumb-del')) return;
+        selectImage(im.id);
+      });
+      item.querySelector('.thumb-del').addEventListener('click', ()=> removeImage(im.id));
+      thumbList.appendChild(item);
+    });
+  }
+
+  Sortable.create(thumbList, {
+    animation:180,
+    onEnd: ()=>{
+      const newOrder = Array.from(thumbList.children).map(c=>c.dataset.id).filter(Boolean);
+      images.sort((a,b)=> newOrder.indexOf(a.id) - newOrder.indexOf(b.id));
+      renderThumbs();
+    }
+  });
+
+  function removeImage(id){
+    images = images.filter(i=>i.id!==id);
+    if(activeId===id){ activeId = images.length ? images[0].id : null; }
+    renderThumbs();
+    if(activeId){ selectImage(activeId); } else { showEmptyStage(); }
+    toast('Image removed', 'info');
+  }
+
+  function showEmptyStage(){
+    stageEmpty.style.display='flex';
+    canvasRelWrap.style.display='none';
+    stageToolbar.style.display='none';
+  }
+
+  // ---------- select & canvas render ----------
+  function selectImage(id){
+    activeId = id;
+    cropMode = false;
+    cropRect = null;
+    removeCropOverlay();
+    renderThumbs();
+    drawActive();
+    stageEmpty.style.display='none';
+    canvasRelWrap.style.display='inline-block';
+    stageToolbar.style.display='flex';
+    syncControlsFromImage();
+  }
+
+  function getActive(){ return images.find(i=>i.id===activeId); }
+
+  function syncControlsFromImage(){
+    const im = getActive(); if(!im) return;
+    $('#rBright').value = im.brightness; $('#vBright').textContent = im.brightness+'%';
+    $('#rContrast').value = im.contrast; $('#vContrast').textContent = im.contrast+'%';
+    $('#rSat').value = im.saturation; $('#vSat').textContent = im.saturation+'%';
+    $$('.filter-chip').forEach(c=> c.classList.toggle('active', c.dataset.filter===im.filter));
+  }
+
+  function drawActive(){
+    const im = getActive(); if(!im) return;
+    const img = new Image();
+    img.onload = ()=>{
+      let w = img.width, h = img.height;
+      const rotated = (im.rotation % 180 !== 0);
+      canvas.width = rotated ? h : w;
+      canvas.height = rotated ? w : h;
+      ctx.save();
+      ctx.translate(canvas.width/2, canvas.height/2);
+      ctx.rotate(im.rotation * Math.PI/180);
+      ctx.scale(im.flipH ? -1:1, im.flipV ? -1:1);
+      ctx.filter = buildFilterString(im);
+      ctx.drawImage(img, -w/2, -h/2, w, h);
+      ctx.restore();
+      // draw stamped texts (already baked into editedSrc normally, but keep live ones)
+      im._lastDrawW = canvas.width; im._lastDrawH = canvas.height;
+    };
+    img.src = im.editedSrc;
+  }
+
+  function buildFilterString(im){
+    let f = `brightness(${im.brightness}%) contrast(${im.contrast}%) saturate(${im.saturation}%)`;
+    if(im.filter==='grayscale') f += ' grayscale(100%)';
+    if(im.filter==='sepia') f += ' sepia(80%)';
+    if(im.filter==='vintage') f += ' sepia(35%) contrast(110%) saturate(80%)';
+    if(im.filter==='cool') f += ' hue-rotate(170deg) saturate(120%)';
+    if(im.filter==='warm') f += ' hue-rotate(-15deg) saturate(115%) brightness(105%)';
+    return f;
+  }
+
+  function commitCanvasToImage(){
+    const im = getActive(); if(!im) return;
+    im.editedSrc = canvas.toDataURL('image/png');
+    im.width = canvas.width; im.height = canvas.height;
+    im.rotation = 0; im.flipH=false; im.flipV=false;
+    renderThumbs();
+  }
+
+  // ---------- adjust controls ----------
+  ['rBright','rContrast','rSat'].forEach(id=>{
+    $('#'+id).addEventListener('input', (e)=>{
+      const im = getActive(); if(!im) return;
+      const map = {rBright:'brightness', rContrast:'contrast', rSat:'saturation'};
+      im[map[id]] = parseInt(e.target.value);
+      const valMap = {rBright:'vBright', rContrast:'vContrast', rSat:'vSat'};
+      $('#'+valMap[id]).textContent = e.target.value+'%';
+      drawActive();
+    });
+  });
+  $$('.filter-chip').forEach(chip=>{
+    chip.addEventListener('click', ()=>{
+      const im = getActive(); if(!im) return;
+      im.filter = chip.dataset.filter;
+      $$('.filter-chip').forEach(c=>c.classList.remove('active'));
+      chip.classList.add('active');
+      drawActive();
+    });
+  });
+
+  // commit adjustments when leaving (bake filter into pixels) — done on rotate/flip/crop/resize/text actions
+  function bakeAdjustments(){
+    const im = getActive(); if(!im) return;
+    drawActive();
+    setTimeout(()=>{ commitCanvasToImage(); im.brightness=100; im.contrast=100; im.saturation=100; im.filter='none'; syncControlsFromImage(); }, 30);
+  }
+
+  // ---------- rotate / flip ----------
+  $('#rotateLeft').addEventListener('click', ()=>{ const im=getActive(); if(!im)return; im.rotation=(im.rotation-90+360)%360; drawActive(); setTimeout(commitCanvasToImage,20); });
+  $('#rotateRight').addEventListener('click', ()=>{ const im=getActive(); if(!im)return; im.rotation=(im.rotation+90)%360; drawActive(); setTimeout(commitCanvasToImage,20); });
+  $('#flipH').addEventListener('click', ()=>{ const im=getActive(); if(!im)return; im.flipH=!im.flipH; drawActive(); setTimeout(commitCanvasToImage,20); });
+  $('#flipV').addEventListener('click', ()=>{ const im=getActive(); if(!im)return; im.flipV=!im.flipV; drawActive(); setTimeout(commitCanvasToImage,20); });
+
+  $('#resetEdit').addEventListener('click', ()=>{
+    const im = getActive(); if(!im) return;
+    im.editedSrc = im.originalSrc;
+    im.rotation=0; im.flipH=false; im.flipV=false;
+    im.brightness=100; im.contrast=100; im.saturation=100; im.filter='none';
+    drawActive(); syncControlsFromImage(); renderThumbs();
+    toast('Reset to original', 'info');
+  });
+
+  // ---------- resize ----------
+  $('#applyResize').addEventListener('click', ()=>{
+    const im = getActive(); if(!im) return;
+    const w = parseInt($('#resizeW').value), h = parseInt($('#resizeH').value);
+    if(!w || !h){ toast('Enter both width and height', 'error'); return; }
+    const img = new Image();
+    img.onload = ()=>{
+      const tmp = document.createElement('canvas');
+      tmp.width = w; tmp.height = h;
+      const tctx = tmp.getContext('2d');
+      tctx.filter = buildFilterString(im);
+      tctx.drawImage(img, 0, 0, w, h);
+      im.editedSrc = tmp.toDataURL('image/png');
+      im.width = w; im.height = h;
+      im.brightness=100; im.contrast=100; im.saturation=100; im.filter='none';
+      selectImage(im.id);
+      toast(`Resized to ${w}×${h}`, 'success');
+    };
+    img.src = im.editedSrc;
+  });
+
+  // ---------- crop ----------
+  let cropOverlayEl = null;
+  $('#cropBtn').addEventListener('click', ()=>{
+    if(cropMode){ applyCrop(); return; }
+    cropMode = true;
+    $('#cropBtn').textContent = '';
+    $('#cropBtn').innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>Apply Crop';
+    initCropOverlay();
+  });
+
+  function initCropOverlay(){
+    removeCropOverlay();
+    const rect = canvas.getBoundingClientRect();
+    const wrapRect = canvasRelWrap.getBoundingClientRect();
+    const w = rect.width*0.7, h = rect.height*0.7;
+    const x = (rect.width-w)/2, y = (rect.height-h)/2;
+    cropRect = {x,y,w,h};
+    cropOverlayEl = document.createElement('div');
+    cropOverlayEl.className = 'crop-box';
+    cropOverlayEl.innerHTML = `<div class="crop-handle nw"></div><div class="crop-handle ne"></div><div class="crop-handle sw"></div><div class="crop-handle se"></div>`;
+    canvasRelWrap.appendChild(cropOverlayEl);
+    updateCropOverlay();
+    makeCropDraggable();
+  }
+  function updateCropOverlay(){
+    if(!cropOverlayEl) return;
+    cropOverlayEl.style.left = cropRect.x+'px';
+    cropOverlayEl.style.top = cropRect.y+'px';
+    cropOverlayEl.style.width = cropRect.w+'px';
+    cropOverlayEl.style.height = cropRect.h+'px';
+  }
+  function removeCropOverlay(){
+    if(cropOverlayEl){ cropOverlayEl.remove(); cropOverlayEl=null; }
+    $('#cropBtn').innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2v14a2 2 0 0 0 2 2h14M18 22V8a2 2 0 0 0-2-2H2"/></svg>Crop';
+    cropMode = false;
+  }
+  function makeCropDraggable(){
+    let dragging=false, mode=null, startX, startY, start;
+    cropOverlayEl.addEventListener('mousedown', e=>{
+      dragging=true; start={...cropRect}; startX=e.clientX; startY=e.clientY;
+      mode = e.target.classList.contains('crop-handle') ? Array.from(e.target.classList).find(c=>c!=='crop-handle') : 'move';
+      e.stopPropagation();
+    });
+    document.addEventListener('mousemove', e=>{
+      if(!dragging) return;
+      const dx = e.clientX-startX, dy = e.clientY-startY;
+      if(mode==='move'){ cropRect.x = start.x+dx; cropRect.y = start.y+dy; }
+      else if(mode==='se'){ cropRect.w = Math.max(30,start.w+dx); cropRect.h = Math.max(30,start.h+dy); }
+      else if(mode==='nw'){ cropRect.x = start.x+dx; cropRect.y = start.y+dy; cropRect.w = Math.max(30,start.w-dx); cropRect.h = Math.max(30,start.h-dy); }
+      else if(mode==='ne'){ cropRect.y = start.y+dy; cropRect.w = Math.max(30,start.w+dx); cropRect.h = Math.max(30,start.h-dy); }
+      else if(mode==='sw'){ cropRect.x = start.x+dx; cropRect.w = Math.max(30,start.w-dx); cropRect.h = Math.max(30,start.h+dy); }
+      updateCropOverlay();
+    });
+    document.addEventListener('mouseup', ()=> dragging=false);
+  }
+
+  function applyCrop(){
+    const im = getActive(); if(!im || !cropRect) return;
+    const scaleX = canvas.width / canvas.clientWidth;
+    const scaleY = canvas.height / canvas.clientHeight;
+    const sx = cropRect.x*scaleX, sy = cropRect.y*scaleY, sw = cropRect.w*scaleX, sh = cropRect.h*scaleY;
+    const tmp = document.createElement('canvas');
+    tmp.width = sw; tmp.height = sh;
+    tmp.getContext('2d').drawImage(canvas, sx, sy, sw, sh, 0, 0, sw, sh);
+    im.editedSrc = tmp.toDataURL('image/png');
+    im.width = sw; im.height = sh;
+    im.rotation=0; im.flipH=false; im.flipV=false;
+    removeCropOverlay();
+    selectImage(im.id);
+    toast('Crop applied', 'success');
+  }
+
+  // ---------- text ----------
+  $$('.swatch').forEach(s=> s.addEventListener('click', ()=>{
+    $$('.swatch').forEach(x=>x.classList.remove('active'));
+    s.classList.add('active');
+  }));
+  $('#addTextBtn').addEventListener('click', ()=>{
+    const im = getActive(); if(!im) return;
+    const text = $('#textInput').value.trim();
+    if(!text){ toast('Type some text first', 'error'); return; }
+    const font = $('#fontFamily').value;
+    const size = parseInt($('#fontSize').value) || 36;
+    const color = $('#colorSwatches .active').dataset.c;
+    const img = new Image();
+    img.onload = ()=>{
+      const tmp = document.createElement('canvas');
+      tmp.width = img.width; tmp.height = img.height;
+      const tctx = tmp.getContext('2d');
+      tctx.drawImage(img,0,0);
+      tctx.font = `600 ${size}px '${font}'`;
+      tctx.fillStyle = color;
+      tctx.textAlign = 'center';
+      tctx.textBaseline = 'middle';
+      tctx.shadowColor = 'rgba(0,0,0,0.4)';
+      tctx.shadowBlur = 6;
+      tctx.fillText(text, tmp.width/2, tmp.height/2);
+      im.editedSrc = tmp.toDataURL('image/png');
+      selectImage(im.id);
+      toast('Text added to image', 'success');
+      $('#textInput').value='';
+    };
+    img.src = im.editedSrc;
+  });
+
+  // ---------- tabs ----------
+  $$('.tab').forEach(tab=>{
+    tab.addEventListener('click', ()=>{
+      $$('.tab').forEach(t=>t.classList.remove('active'));
+      tab.classList.add('active');
+      $$('.tab-panel').forEach(p=>p.style.display='none');
+      $('#tab-'+tab.dataset.tab).style.display='block';
+      if(tab.dataset.tab==='scan'){ /* nothing auto, user starts camera manually */ }
+      else { stopQrScanner(); }
+    });
+  });
+
+  // ---------- pdf settings ----------
+  let pdfSettings = { size:'a4', orientation:'portrait', margin:10, quality:92, layout:'one' };
+  $$('#pageSizeGrid .opt-card').forEach(c=>c.addEventListener('click', ()=>{
+    $$('#pageSizeGrid .opt-card').forEach(x=>x.classList.remove('active')); c.classList.add('active');
+    pdfSettings.size = c.dataset.size;
+  }));
+  $$('#orientGrid .opt-card').forEach(c=>c.addEventListener('click', ()=>{
+    $$('#orientGrid .opt-card').forEach(x=>x.classList.remove('active')); c.classList.add('active');
+    pdfSettings.orientation = c.dataset.o;
+  }));
+  $$('#layoutGrid .opt-card').forEach(c=>c.addEventListener('click', ()=>{
+    $$('#layoutGrid .opt-card').forEach(x=>x.classList.remove('active')); c.classList.add('active');
+    pdfSettings.layout = c.dataset.layout;
+  }));
+  $('#rMargin').addEventListener('input', e=>{ pdfSettings.margin=parseInt(e.target.value); $('#vMargin').textContent=e.target.value+' mm'; });
+  $('#rQuality').addEventListener('input', e=>{ pdfSettings.quality=parseInt(e.target.value); $('#vQuality').textContent=e.target.value+'%'; });
+
+  // ---------- convert to pdf ----------
+  convertBtn.addEventListener('click', async ()=>{
+    if(images.length===0){ toast('Add at least one image', 'error'); return; }
+    convertBtn.classList.add('loading'); convertBtn.disabled=true;
+    await new Promise(r=>setTimeout(r,250)); // let UI paint spinner
+
+    try{
+      const { jsPDF } = window.jspdf;
+      const sizeMap = { a4:[210,297], letter:[215.9,279.4], legal:[215.9,355.6] };
+      let pageW, pageH;
+      if(pdfSettings.size==='fit'){
+        pageW = null; pageH = null; // determined per image
+      } else {
+        [pageW, pageH] = sizeMap[pdfSettings.size];
+        if(pdfSettings.orientation==='landscape'){ [pageW,pageH]=[pageH,pageW]; }
+      }
+
+      let doc = null;
+      const m = pdfSettings.margin;
+
+      for(let i=0;i<images.length;i++){
+        const im = images[i];
+        const dims = await getImgDims(im.editedSrc);
+        let pw = pageW, ph = pageH;
+        if(pdfSettings.size==='fit'){
+          const ratio = dims.w/dims.h;
+          pw = 210; ph = pw/ratio;
+        }
+        if(!doc){
+          doc = new jsPDF({ orientation: ph>=pw?'p':'l', unit:'mm', format:[pw,ph] });
+        } else {
+          doc.addPage([pw,ph], ph>=pw?'p':'l');
+        }
+        const availW = pw - m*2, availH = ph - m*2;
+        const ratio = Math.min(availW/dims.w, availH/dims.h);
+        const drawW = dims.w*ratio, drawH = dims.h*ratio;
+        const dx = (pw-drawW)/2, dy = (ph-drawH)/2;
+        const fmt = im.editedSrc.startsWith('data:image/png') ? 'PNG' : 'JPEG';
+        doc.addImage(im.editedSrc, fmt, dx, dy, drawW, drawH, undefined, 'FAST');
+      }
+
+      doc.save('pixcraft-export.pdf');
+      toast('PDF downloaded successfully', 'success');
+    }catch(err){
+      console.error(err);
+      toast('Something went wrong generating the PDF', 'error');
+    }finally{
+      convertBtn.classList.remove('loading'); convertBtn.disabled=false;
+    }
+  });
+
+  function getImgDims(src){
+    return new Promise(res=>{
+      const img = new Image();
+      img.onload = ()=> res({w:img.width, h:img.height});
+      img.src = src;
+    });
+  }
+
+  // ---------- QR scanner ----------
+  let qrStream = null, qrRAF = null;
+  const qrVideo = $('#qrVideo');
+  const qrViewport = $('#qrViewport');
+  const qrStartBtn = $('#qrStartBtn');
+  const qrStopBtn = $('#qrStopBtn');
+  const qrResultBox = $('#qrResultBox');
+  const qrResultText = $('#qrResultText');
+  const qrCanvas = document.createElement('canvas');
+  const qrCtx = qrCanvas.getContext('2d', { willReadFrequently:true });
+  let lastQrValue = null;
+
+  qrStartBtn.addEventListener('click', startQrScanner);
+  qrStopBtn.addEventListener('click', stopQrScanner);
+
+  async function startQrScanner(){
+    if(typeof jsQR === 'undefined'){ toast('QR engine failed to load — check your connection', 'error'); return; }
+    try{
+      qrStream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:'environment' } });
+      qrVideo.srcObject = qrStream;
+      await qrVideo.play();
+      qrViewport.classList.add('live');
+      qrStartBtn.disabled = true; qrStopBtn.disabled = false;
+      toast('Camera started — point at a QR code', 'info');
+      tickQr();
+    }catch(err){
+      console.error(err);
+      toast('Could not access camera — check browser permissions', 'error');
+    }
+  }
+
+  function stopQrScanner(){
+    if(qrRAF) cancelAnimationFrame(qrRAF);
+    if(qrStream){ qrStream.getTracks().forEach(t=>t.stop()); qrStream=null; }
+    qrViewport.classList.remove('live');
+    qrStartBtn.disabled = false; qrStopBtn.disabled = true;
+  }
+
+  function tickQr(){
+    if(!qrStream) return;
+    if(qrVideo.readyState === qrVideo.HAVE_ENOUGH_DATA){
+      qrCanvas.width = qrVideo.videoWidth;
+      qrCanvas.height = qrVideo.videoHeight;
+      qrCtx.drawImage(qrVideo, 0, 0, qrCanvas.width, qrCanvas.height);
+      const imageData = qrCtx.getImageData(0, 0, qrCanvas.width, qrCanvas.height);
+      const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts:'dontInvert' });
+      if(code && code.data){
+        handleQrResult(code.data);
+        stopQrScanner();
+        return;
+      }
+    }
+    qrRAF = requestAnimationFrame(tickQr);
+  }
+
+  function handleQrResult(value){
+    if(value === lastQrValue) { /* still show */ }
+    lastQrValue = value;
+    qrResultBox.style.display = 'block';
+    qrResultText.textContent = value;
+    toast('QR code scanned successfully', 'success');
+    const isUrl = /^https?:\/\//i.test(value) || /^[\w.-]+\.[a-z]{2,}([\/?#].*)?$/i.test(value);
+    $('#qrOpenBtn').style.display = isUrl ? 'flex' : 'none';
+  }
+
+  $('#qrOpenBtn').addEventListener('click', ()=>{
+    if(!lastQrValue) return;
+    const url = /^https?:\/\//i.test(lastQrValue) ? lastQrValue : 'https://'+lastQrValue;
+    window.open(url, '_blank', 'noopener');
+  });
+  $('#qrCopyBtn').addEventListener('click', ()=>{
+    if(!lastQrValue) return;
+    navigator.clipboard.writeText(lastQrValue).then(()=> toast('Copied to clipboard', 'success'))
+      .catch(()=> toast('Could not copy', 'error'));
+  });
+
+  // upload-based QR scan
+  const qrDropzone = $('#qrDropzone');
+  const qrFileInput = $('#qrFileInput');
+  qrDropzone.addEventListener('click', ()=> qrFileInput.click());
+  qrDropzone.addEventListener('dragover', e=>{ e.preventDefault(); qrDropzone.classList.add('drag'); });
+  qrDropzone.addEventListener('dragleave', ()=> qrDropzone.classList.remove('drag'));
+  qrDropzone.addEventListener('drop', e=>{
+    e.preventDefault(); qrDropzone.classList.remove('drag');
+    if(e.dataTransfer.files[0]) scanQrFromFile(e.dataTransfer.files[0]);
+  });
+  qrFileInput.addEventListener('change', e=>{
+    if(e.target.files[0]) scanQrFromFile(e.target.files[0]);
+    qrFileInput.value = '';
+  });
+
+  function scanQrFromFile(file){
+    if(!file.type.startsWith('image/')){ toast('Please choose an image file', 'error'); return; }
+    const reader = new FileReader();
+    reader.onload = (ev)=>{
+      const img = new Image();
+      img.onload = ()=>{
+        qrCanvas.width = img.width; qrCanvas.height = img.height;
+        qrCtx.drawImage(img, 0, 0);
+        const imageData = qrCtx.getImageData(0, 0, qrCanvas.width, qrCanvas.height);
+        const code = jsQR(imageData.data, imageData.width, imageData.height);
+        if(code && code.data){ handleQrResult(code.data); }
+        else { toast('No QR code found in that image', 'error'); }
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+})();
+</script>
+</body>
+</html>
